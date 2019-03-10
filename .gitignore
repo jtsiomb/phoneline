@@ -1,0 +1,6 @@
+*.o
+*.d
+*.swp
+phonelined/phonelined
+phoneline/phoneline
+xphoneline/xphoneline
