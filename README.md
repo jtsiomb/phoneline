@@ -8,9 +8,9 @@ remotely managing annoying ringing phones.
 
 The system is made out of the following parts:
 
- - Some kind of, preferably low power like the raspberry pi, computer running
-   UNIX, connected to the home LAN, and also to the telephone line through a
-   standard serial port modem.
+ - Some kind of computer (preferably a low power SBC like the raspberry pi)
+   running UNIX, connected to the home LAN, and also to the telephone line
+   through a standard serial port modem.
 
  - A UNIX daemon (*phonelined*), running on said computer, monitors the phone
    line for ringing events. When a phonecall arrives, it notifies any active
