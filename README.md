@@ -1,5 +1,5 @@
-phoneline - tools for managing annoying ringing phones
-======================================================
+phoneline - system for managing annoying ringing phones
+=======================================================
 
 About
 -----
