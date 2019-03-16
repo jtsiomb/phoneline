@@ -30,6 +30,7 @@ static int lis = -1;
 
 int main(int argc, char **argv)
 {
+	static const int reuse = 1;
 	struct sockaddr_in sa;
 
 	init_options();
@@ -65,6 +66,7 @@ int main(int argc, char **argv)
 		close(modem_fd);
 		return 1;
 	}
+	setsockopt(lis, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof reuse);
 	fcntl(lis, F_SETFL, fcntl(lis, F_GETFL) | O_NONBLOCK);
 	memset(&sa, 0, sizeof sa);
 	sa.sin_family = AF_INET;
