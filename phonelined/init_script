@@ -1,0 +1,28 @@
+#!/bin/sh
+# phonelined - daemon for managing a home telephone line
+#
+# this is an example init script, for starting and stopping the daemon
+# For systems using SystemV init, you'd copy this to /etc/init.d/phoneline
+# Then go into any appropriate runlevel directories and link it with an SXX
+# prefix like so: cd /etc/rc2.d && ln -s ../init.d/phoneline S99phoneline
+
+case "$1" in
+start)
+	echo 'Starting phonelined'
+	phonelined
+	;;
+
+stop)
+	echo 'Stopping phonelined'
+	pid=`ps -e | grep phonelined | awk '{ print $1 }'`
+	if [ -z "$pid" ]; then
+		echo 'phonelined not running, nothing to do.' >&2
+		exit 1
+	fi
+	kill $pid
+	;;
+
+reload|restart|force-reload)
+	$0 stop && sleep 1 && $0 start
+	;;
+esac
