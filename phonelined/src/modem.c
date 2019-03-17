@@ -11,6 +11,7 @@
 #include "util.h"
 #include "opt.h"
 
+#define DBGPRINT
 #define MAX_RING_INTERVAL	8
 
 int init_modem(void)
@@ -59,6 +60,7 @@ int handle_modem(void)
 				tm = localtime(&t);
 				printf("[%02d/%02d/%d - %02d:%02d] ring!\n", tm->tm_mday + 1,
 						tm->tm_mon + 1, tm->tm_year + 1900, tm->tm_hour, tm->tm_min);
+				callerid[0] = 0;
 				alarm(MAX_RING_INTERVAL);
 			}
 			last_ring = t;
@@ -77,7 +79,7 @@ int handle_modem(void)
 
 			alarm(0);
 			ring_pending = 1;
-			printf("  call %s %s: %s\n", datestr, timestr, callerid);
+			printf("  call %s %s: %s\n", datestr, timestr, callerid[0] ? callerid : "unknown");
 		}
 	}
 

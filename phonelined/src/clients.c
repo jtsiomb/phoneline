@@ -94,7 +94,7 @@ void notify_ring(const char *telnum)
 	int i;
 	char buf[64];
 
-	sprintf(buf, "ring %s\n", telnum);
+	sprintf(buf, "ring %s\n", telnum ? telnum : "unknown");
 
 	for(i=0; i<num_clients; i++) {
 		if(csock[i] == -1) continue;

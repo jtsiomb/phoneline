@@ -96,8 +96,9 @@ int main(int argc, char **argv)
 		struct timeval timeout;
 
 		if(ring_pending) {
-			add_call(time(0), callerid);
-			notify_ring(callerid);
+			char *number = callerid[0] ? callerid : 0;
+			add_call(time(0), number);
+			notify_ring(number);
 			callerid[0] = 0;
 			ring_pending = 0;
 		}

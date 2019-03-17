@@ -16,7 +16,7 @@ static int write_pending;
 void add_call(time_t time, const char *numstr)
 {
 	callbuf[cnext].time = time;
-	strcpy(callbuf[cnext].number, numstr);
+	strcpy(callbuf[cnext].number, numstr ? numstr : "unknown");
 	cnext = (cnext + 1) & (MAX_NUM_CALLS - 1);
 	write_pending = 1;
 }
