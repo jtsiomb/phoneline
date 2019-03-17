@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <time.h>
 #include <stdarg.h>
@@ -50,11 +51,14 @@ int handle_modem(void)
 	struct tm *tm;
 
 	while((line = read_line(modem_fd))) {
+		line = clean_line(line);
+		if(!line || !*line) continue;
+
 #ifdef DBGPRINT
-		printf("DBG modem read_line: \"%s\"\n", line);
+		printf("DBG modem says: \"%s\"\n", line);
 #endif
 
-		if(strcmp(line, "RING\r\n") == 0) {
+		if(strcmp(line, "RING") == 0) {
 			t = time(0);
 			if(t - last_ring > MAX_RING_INTERVAL) {
 				tm = localtime(&t);
@@ -75,7 +79,10 @@ int handle_modem(void)
 		} else if(memcmp(line, "TIME = ", 7) == 0) {
 			strncpy(timestr, line + 7, sizeof timestr - 1);
 		} else if(memcmp(line, "NMBR = ", 7) == 0) {
-			strncpy(callerid, clean_line(line + 7), sizeof callerid - 1);
+			char *numstr = clean_line(line + 7);
+			if(atol(numstr)) {
+				strncpy(callerid, numstr, sizeof callerid - 1);
+			}
 
 			alarm(0);
 			ring_pending = 1;
