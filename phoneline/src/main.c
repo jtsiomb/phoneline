@@ -97,7 +97,7 @@ static int handle_resp(int fd)
 
 	while((line = read_line(fd))) {
 		if(memcmp(line, "ring ", 5) == 0) {
-			printf("Phone ringing: %s\n", line + 5);
+			printf("Phone ringing: %s\n", clean_line(line + 5));
 
 		} else if(memcmp(line, "log ", 4) == 0) {
 			char *sep = strchr(line, ':');

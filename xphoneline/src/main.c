@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <X11/Xlib.h>
+#include "ui.h"
 
 #define DEF_PORT	1111
 
@@ -15,7 +16,7 @@ static int handle_xevent(XEvent *ev);
 static int parse_args(int argc, char **argv);
 static void print_usage(const char *argv0);
 
-static Display *dpy;
+static Window win_main;
 
 static char *hostname;
 static int port = DEF_PORT;
@@ -58,6 +59,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	xs = ConnectionNumber(dpy);
+	xa_wm_proto = XInternAtom(dpy, "WM_PROTOCOLS", False);
+	xa_wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
 
 	for(;;) {
 		int res, maxfd;
@@ -84,8 +87,15 @@ int main(int argc, char **argv)
 			while(XPending(dpy)) {
 				XEvent ev;
 				XNextEvent(dpy, &ev);
-				if(handle_xevent(&ev) == -1) {
-					goto done;
+
+				if(ev.window == win_main) {
+					if(handle_mainwin_event(&ev) == -1) {
+						goto done;
+					}
+				} else {
+					if(handle_xevent(&ev) == -1) {
+						goto done;
+					}
 				}
 			}
 		}
