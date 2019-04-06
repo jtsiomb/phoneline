@@ -11,6 +11,10 @@ int read_char(int fd)
 
 	if(next >= end) {
 		if((last_rdsize = read(fd, buf, sizeof buf)) <= 0) {
+			if(last_rdsize == 0) {
+				/* socket closed on the remote side */
+				close(fd);
+			}
 			return -1;
 		}
 		next = buf;
