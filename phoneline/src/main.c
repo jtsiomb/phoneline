@@ -11,20 +11,26 @@
 #include "util.h"
 
 #define DEF_PORT	1111
+/* maximum timeout about 8-9 minutes */
+#define MAX_TIMEOUT	512
 
+static int open_conn(void);
+static int sendcmd(const char *cmd);
+static void handle_input(void);
 static int handle_resp(int fd);
 static int parse_args(int argc, char **argv);
 static void print_usage(const char *argv0);
+static void print_cmd_help(void);
 
-static enum { WAIT_RING, PRINT_LOG, HANGUP } mode;
+static enum { INTERACTIVE, PRINT_LOG, HANGUP } mode;
+
+static int s = -1;
 static char *hostname;
 static int port = DEF_PORT;
 
 int main(int argc, char **argv)
 {
-	int s;
-	struct hostent *host;
-	struct sockaddr_in addr;
+	int timeout;
 
 	if(parse_args(argc, argv) == -1) {
 		return 1;
@@ -34,13 +40,96 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	if(open_conn() == -1) {
+		return 1;
+	}
+
+	switch(mode) {
+	case PRINT_LOG:
+		sendcmd("log 10\n");
+		break;
+
+	case HANGUP:
+		sendcmd("hangup\n");
+		return 0;
+
+	default:
+		break;
+	}
+
+	for(;;) {
+		int res, maxfd = 0;
+		fd_set rdset;
+		struct timeval tv;
+
+		if(mode == INTERACTIVE) {
+			printf("> ");
+			fflush(stdout);
+		}
+
+		FD_ZERO(&rdset);
+		FD_SET(0, &rdset);
+
+		if(s >= 0) {
+			FD_SET(s, &rdset);
+			maxfd = s;
+		} else {
+			tv.tv_sec = timeout;
+			tv.tv_usec = 0;
+		}
+
+		if((res = select(maxfd + 1, &rdset, 0, 0, s >= 0 ? 0 : &tv)) == -1 && errno != EINTR) {
+			break;
+		}
+
+		if(res > 0) {
+			if(FD_ISSET(0, &rdset)) {
+				handle_input();
+			}
+			if(FD_ISSET(s, &rdset)) {
+				if(handle_resp(s) == -1) {
+					fprintf(stderr, "lost connection to server.\n");
+					s = -1;
+					timeout = 4;
+				}
+			}
+		}
+
+		if(s < 0) {
+			printf("trying to reconnect to %s:%d ... ", hostname, port);
+			fflush(stdout);
+			if(open_conn() == 0) {
+				printf("done.\n");
+			} else {
+				printf("failed.\n");
+			}
+
+			if(timeout < MAX_TIMEOUT) {
+				timeout *= 2;
+			}
+		}
+	}
+
+	close(s);
+	return 0;
+}
+
+static int open_conn(void)
+{
+	struct hostent *host;
+	struct sockaddr_in addr;
+
+	if(s >= 0) return 0;	/* already connected */
+
 	if((s = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
 		perror("failed to create socket");
-		return 1;
+		return -1;
 	}
 	if(!(host = gethostbyname(hostname))) {
 		fprintf(stderr, "failed to resolve %s: %s\n", hostname, hstrerror(h_errno));
-		return 1;
+		close(s);
+		s = -1;
+		return -1;
 	}
 	memset(&addr, 0, sizeof addr);
 	addr.sin_family = AF_INET;
@@ -49,46 +138,49 @@ int main(int argc, char **argv)
 	if(connect(s, (struct sockaddr*)&addr, sizeof addr) == -1) {
 		fprintf(stderr, "failed to connect to %s:%d (%s): %s\n", hostname, port,
 				inet_ntoa(addr.sin_addr), strerror(errno));
-		return 1;
+		close(s);
+		s = -1;
+		return -1;
 	}
-
-	switch(mode) {
-	case PRINT_LOG:
-		write(s, "log 10\n", 7);
-		break;
-
-	case HANGUP:
-		write(s, "hangup\n", 7);
-		return 0;
-
-	default:
-		break;
-	}
-
 	fcntl(s, F_SETFL, fcntl(s, F_GETFL) | O_NONBLOCK);
+	return 0;
+}
 
-	for(;;) {
-		int res;
-		fd_set rdset;
+static int sendcmd(const char *cmd)
+{
+	if(s < 0) {
+		fprintf(stderr, "Can't send command, not connected!\n");
+		return -1;
+	}
+	return write(s, cmd, strlen(cmd)) > 0 ? 0 : -1;
+}
 
-		FD_ZERO(&rdset);
-		FD_SET(s, &rdset);
+static void handle_input(void)
+{
+	char buf[512], *cmd;
+	int sz;
 
-		if((res = select(s + 1, &rdset, 0, 0, 0)) == -1 && errno != EINTR) {
-			break;
-		}
+	while((sz = read(0, buf, sizeof buf - 1)) <= 0 && errno == EINTR);
+	if(sz <= 0) exit(0);
 
-		if(res > 0) {
-			if(FD_ISSET(s, &rdset)) {
-				if(handle_resp(s) == -1) {
-					break;
-				}
-			}
-		}
+	buf[sz] = 0;
+
+	if(!(cmd = clean_line(buf)) || !*cmd) {
+		return;
 	}
 
-	close(s);
-	return 0;
+	if(strcmp(cmd, "log") == 0) {
+		sendcmd("log 10\n");
+	} else if(strcmp(cmd, "hangup") == 0 || strcmp(cmd, "hup") == 0) {
+		sendcmd("hangup\n");
+	} else if(strcmp(cmd, "quit") == 0 || strcmp(cmd, "bye") == 0) {
+		exit(0);
+	} else if(strcmp(cmd, "help") == 0) {
+		print_cmd_help();
+	} else {
+		fprintf(stderr, "unknown command: %s\n", cmd);
+		print_cmd_help();
+	}
 }
 
 static int handle_resp(int fd)
@@ -109,7 +201,9 @@ static int handle_resp(int fd)
 			}
 
 		} else if(memcmp(line, "endlog", 6) == 0) {
-			return -1;
+			if(mode != INTERACTIVE) {
+				exit(0);
+			}
 
 		} else if(memcmp(line, "ping", 4) == 0) {
 			write(fd, "pong\n", 5);
@@ -181,4 +275,13 @@ static void print_usage(const char *argv0)
 	printf(" -l: retrieve and print call log\n");
 	printf(" -H: hangup call (caution might incur charges to the caller!)\n");
 	printf(" -h: print usage information and exit\n");
+}
+
+static void print_cmd_help(void)
+{
+	printf("Available commands:\n");
+	printf("log           - print call log\n");
+	printf("hangup or hup - hangup call (caution might incur charges to the caller!)\n");
+	printf("quit or bye   - disconnect and exit\n");
+	printf("help          - print command help\n");
 }
