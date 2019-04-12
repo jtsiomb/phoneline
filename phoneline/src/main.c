@@ -62,11 +62,6 @@ int main(int argc, char **argv)
 		fd_set rdset;
 		struct timeval tv;
 
-		if(mode == INTERACTIVE) {
-			printf("> ");
-			fflush(stdout);
-		}
-
 		FD_ZERO(&rdset);
 		FD_SET(0, &rdset);
 

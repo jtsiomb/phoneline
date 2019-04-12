@@ -170,6 +170,8 @@ static void cleanup(void)
 		close(lis);
 	}
 	if(modem_fd >= 0) close(modem_fd);
+
+	sync_calldb();
 }
 
 static void daemonize(void)

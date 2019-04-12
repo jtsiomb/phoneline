@@ -84,6 +84,5 @@ void sync_calldb(void)
 {
 	if(write_pending) {
 		write_calldb();
-		write_pending = 0;
 	}
 }
