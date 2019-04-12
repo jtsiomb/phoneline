@@ -36,9 +36,9 @@ install: $(bin)
 	cp $(bin) $(DESTDIR)$(PREFIX)/bin/$(bin)
 	cp init_script /etc/init.d/phoneline
 	for i in $(startlevels); do \
-		cd $(DESTDIR)/etc/rc$$i.d && ln -s ../init.d/phoneline S99phoneline; done
+		cd $(DESTDIR)/etc/rc$$i.d && rm -f S99phoneline && ln -s ../init.d/phoneline S99phoneline; done
 	for i in $(killlevels); do \
-		cd $(DESTDIR)/etc/rc$$i.d && ln -s ../init.d/phoneline K01phoneline; done
+		cd $(DESTDIR)/etc/rc$$i.d && rm -f K01phoneline && ln -s ../init.d/phoneline K01phoneline; done
 
 .PHONY: uninstall
 uninstall:
