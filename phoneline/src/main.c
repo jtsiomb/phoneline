@@ -74,7 +74,11 @@ int main(int argc, char **argv)
 		}
 
 		if((res = select(maxfd + 1, &rdset, 0, 0, s >= 0 ? 0 : &tv)) == -1 && errno != EINTR) {
-			break;
+			close(s);
+			fprintf(stderr, "select: lost connection to server.\n");
+			s = -1;
+			timeout = 4;
+			continue;
 		}
 
 		if(res > 0) {
@@ -83,9 +87,10 @@ int main(int argc, char **argv)
 			}
 			if(FD_ISSET(s, &rdset)) {
 				if(handle_resp(s) == -1) {
-					fprintf(stderr, "lost connection to server.\n");
+					fprintf(stderr, "handle_resp: lost connection to server.\n");
 					s = -1;
 					timeout = 4;
+					continue;
 				}
 			}
 		}
@@ -94,7 +99,7 @@ int main(int argc, char **argv)
 			printf("trying to reconnect to %s:%d ... ", hostname, port);
 			fflush(stdout);
 			if(open_conn() == 0) {
-				printf("done.\n");
+				printf("done (fd: %d).\n", s);
 			} else {
 				printf("failed.\n");
 			}
