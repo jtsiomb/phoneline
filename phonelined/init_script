@@ -23,6 +23,8 @@ stop)
 	;;
 
 reload|restart|force-reload)
-	$0 stop && sleep 1 && $0 start
+	$0 stop
+	sleep 1
+	$0 start
 	;;
 esac
